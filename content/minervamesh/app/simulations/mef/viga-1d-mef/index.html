@@ -4,180 +4,169 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="../../../favicon.ico" />
-    <title>MinervaMesh - Viga 1D (MEF)</title>
+    <title>MinervaMesh · Viga 1D (MEF)</title>
     <link rel="stylesheet" href="https://pyscript.net/releases/2025.8.1/core.css" integrity="sha384-C7Vo5fjeYiyN27fdJgeiteaUwrLVW0+I9EbpT1kBxsxac8+kxV5zYrLayugNSu1q" crossorigin="anonymous" />
+    <script src="../../../assets/theme.js"></script>
     <link rel="stylesheet" href="../../../assets/tailwind.css" />
+    <script type="module" src="../../../assets/app.js"></script>
     <script type="module" src="https://pyscript.net/releases/2025.8.1/core.js" integrity="sha384-3iTboEo+2h87xDhKzYs49FbFFhi1sOZV/X7TQG7Bf9A0Lo1ZO98j9P0LBbu8GrW4" crossorigin="anonymous"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" integrity="sha384-wFjoQjtV1y5jVHbt0p35Ui8aV8GVpEZkyF99OXWqP/eNJDU93D3Ugxkoyh6Y2I4A" crossorigin="anonymous" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" integrity="sha384-06z5D//U/xpvxZHuUz92xBvq3DqBBFi7Up53HRrbV7Jlv7Yvh/MZ7oenfUe9iCEt" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" integrity="sha384-WJdEkJKrbsqw0evQ4GB6mlsKe5cGTxBOw4KAEIa52ZLB7DDpliGkwdme/HMa5n1m" crossorigin="anonymous"></script>
-    <style>
-      #loading, #sim-loading { border: none; background: transparent; padding: 0; }
-      #loading::backdrop, #sim-loading::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
-      .box { background:#fff; border-radius:.5rem; padding:1.5rem; width:300px; box-shadow:0 10px 25px rgba(0,0,0,.1); display:flex; flex-direction:column; align-items:center; gap:1rem; }
-      .spinner { animation: spin 1s linear infinite; height:2.5rem; width:2.5rem; border:4px solid #3B82F6; border-top-color:transparent; border-radius:9999px; }
-      @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-    <script type="module">
-      const loading = document.getElementById('loading');
-      addEventListener('py:ready', () => loading.close());
-      loading.showModal();
-    </script>
   </head>
-  <body class="bg-gray-100 min-h-screen p-6">
-    <dialog id="loading"><div class="box"><div class="spinner"></div><p class="text-gray-700 font-medium text-center">Carregando PyScript...</p></div></dialog>
-    <dialog id="sim-loading"><div class="box"><div class="spinner"></div><p class="text-gray-700 font-medium text-center">Executando simulação...</p></div></dialog>
+  <body data-mm-embedded class="bg-mm-bg min-h-screen" data-mm-module="viga-1d-mef" data-mm-i18n data-mm-title="title">
 
-    <div class="max-w-5xl mx-auto relative">
-      <img src="../../../assets/logo_poli_ufrj.png" alt="Logo Politécnica UFRJ" class="h-12 w-auto absolute top-0 right-0 mt-2 mr-2 opacity-80" />
+    <div id="mm-app" class="max-w-7xl mx-auto">
 
-      <div class="flex items-center mb-6">
-        <a href="../../../index.html" class="flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-150"><span class="font-medium">Voltar para Menu</span></a>
-      </div>
+      <h2 class="text-3xl font-bold text-mm-text mb-6 text-center" data-i18n="title">Viga 1D Avançada - Análise Completa (MEF)</h2>
 
-      <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Viga 1D Avançada - Análise Completa (MEF)</h2>
+      <details class="mm-desc mb-6 rounded border-l-4 border-mm-accent bg-mm-accent-soft" data-mm-desc open>
+        <summary class="cursor-pointer select-none px-4 py-3 text-lg font-semibold text-mm-accent" data-i18n="section.about">Sobre o problema</summary>
+        <div class="space-y-4 px-4 pb-4 text-mm-text">
+          <section>
+            <h4 class="mb-1 font-semibold text-mm-accent" data-i18n="desc.sec.equation">Equação governante</h4>
+            <p data-i18n="desc.equation">Flexão de viga pela teoria de Euler-Bernoulli: w(x) é a deflexão transversal, E(x) o módulo de elasticidade, I(x) o momento de inércia e q(x) a carga distribuída:</p>
+            <div class="overflow-x-auto py-1">$$ \frac{d^2}{dx^2}\!\left(E(x)\,I(x)\,\frac{d^2 w}{dx^2}\right) = q(x), \qquad 0 \le x \le L $$</div>
+            <p data-i18n="desc.props">E e I são constantes ou variam ao longo de x (linear ou parabólica) conforme o seletor de propriedades.</p>
+          </section>
+          <section>
+            <h4 class="mb-1 font-semibold text-mm-accent" data-i18n="desc.sec.domain">Domínio</h4>
+            <div class="md:flex md:items-start md:gap-6">
+              <p class="md:flex-1"><span data-i18n="desc.domain">Viga de comprimento L dividida em nₑ elementos de viga de tamanho uniforme:</span> $h = L/n_e$.</p>
+              <figure class="mm-scheme mt-3 shrink-0 md:mt-0 md:w-80 lg:w-96" data-mm-scheme="beam">
+                <svg viewBox="0 0 400 190" role="img" data-i18n-attr="aria-label:scheme.alt"><defs><marker id="viga-ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker><marker id="viga-ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/></marker><pattern id="viga-h" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" class="hatch"/></pattern></defs>
+                <line x1="80" y1="48" x2="320" y2="48" stroke="#2563eb" stroke-width="1.6"/>
+                <line x1="80" y1="48" x2="80" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="110" y1="48" x2="110" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="140" y1="48" x2="140" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="170" y1="48" x2="170" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="200" y1="48" x2="200" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="230" y1="48" x2="230" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="260" y1="48" x2="260" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="290" y1="48" x2="290" y2="86" class="arrow" marker-end="url(#viga-ab)"/><line x1="320" y1="48" x2="320" y2="86" class="arrow" marker-end="url(#viga-ab)"/>
+                <text x="200" y="38" text-anchor="middle" class="bc">q</text>
+                <rect x="70" y="90" width="260" height="10" class="dom"/>
+                <text x="200" y="118" text-anchor="middle" class="lab">EI</text>
+                <!-- apoio fixo (pino) -->
+                <polygon points="70,100 58,124 82,124" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+                <rect x="52" y="124" width="36" height="8" fill="url(#viga-h)" stroke="none"/><line x1="52" y1="124" x2="88" y2="124" stroke="#1f2937" stroke-width="1.5"/>
+                <!-- apoio móvel (rolete) -->
+                <polygon points="330,100 318,120 342,120" fill="#fff" stroke="#1f2937" stroke-width="2"/>
+                <circle cx="324" cy="124" r="3.5" fill="#fff" stroke="#1f2937" stroke-width="1.5"/><circle cx="336" cy="124" r="3.5" fill="#fff" stroke="#1f2937" stroke-width="1.5"/>
+                <rect x="312" y="128" width="36" height="8" fill="url(#viga-h)" stroke="none"/><line x1="312" y1="128" x2="348" y2="128" stroke="#1f2937" stroke-width="1.5"/>
+                <text x="64" y="150" text-anchor="start" class="bc">w(0) = 0</text>
+                <text x="336" y="150" text-anchor="end" class="bc">w(L) = 0</text>
+                <line x1="70" y1="172" x2="120" y2="172" class="ax" marker-end="url(#viga-ag)"/><text x="126" y="176" class="axl">x</text><text x="70" y="184" text-anchor="middle" class="axl">0</text><text x="330" y="184" text-anchor="middle" class="axl">L</text>
+                </svg>
+              </figure>
+            </div>
+          </section>
+          <section>
+            <h4 class="mb-1 font-semibold text-mm-accent" data-i18n="desc.sec.bc">Condições de contorno</h4>
+            <p data-i18n="desc.bc.intro">Apoios conforme o seletor (θ = w' é a rotação); as condições sobre momento e cortante nos apoios são naturais na formulação:</p>
+            <ul class="list-disc space-y-1 pl-5">
+              <li><span data-i18n="desc.bc.ss">Simplesmente apoiada:</span> $w(0) = w(L) = 0$</li>
+              <li><span data-i18n="desc.bc.cantilever">Em balanço (engaste em x = 0, extremidade x = L livre):</span> $w(0) = \theta(0) = 0$</li>
+              <li><span data-i18n="desc.bc.ff">Engastada-engastada:</span> $w(0) = \theta(0) = w(L) = \theta(L) = 0$</li>
+              <li><span data-i18n="desc.bc.fs">Engastada-apoiada (engaste em x = 0, apoio em x = L):</span> $w(0) = \theta(0) = 0$, $w(L) = 0$</li>
+            </ul>
+            <p class="mt-2" data-i18n="desc.load.intro">Carregamentos disponíveis (q é a magnitude informada):</p>
+            <ul class="list-disc space-y-1 pl-5">
+              <li><span data-i18n="desc.load.uniform">Uniforme:</span> $q(x) = q$</li>
+              <li><span data-i18n="desc.load.linear">Linear, de q em x = 0 a q/2 em x = L:</span> $q(x) = q\,(1 - x/2L)$</li>
+              <li><span data-i18n="desc.load.triangular">Triangular, com pico q no centro e zero nas extremidades:</span> $q(x) = q\,(1 - 2|x - L/2|/L)$</li>
+              <li><span data-i18n="desc.load.sinusoidal">Senoidal:</span> $q(x) = q\,\sin(\pi x / L)$</li>
+              <li><span data-i18n="desc.load.point">Pontual, força P = qL no centro, aproximada por uma distribuição gaussiana estreita:</span> $P = qL$, $x = L/2$</li>
+            </ul>
+          </section>
+          <section>
+            <h4 class="mb-1 font-semibold text-mm-accent" data-i18n="section.method">Método numérico</h4>
+            <p data-i18n="desc.method">Método dos Elementos Finitos com elementos de viga de Euler-Bernoulli (funções de forma cúbicas de Hermite, dois graus de liberdade por nó: w e θ). Propriedades e carga avaliadas pela média dos valores nodais em cada elemento. Momento fletor M = −EI w'' e esforço cortante V = −EI w''' obtidos das derivadas das funções de forma e promediados nos nós.</p>
+          </section>
+          <section>
+            <h4 class="mb-1 font-semibold text-mm-accent" data-i18n="desc.sec.reference">Solução de referência</h4>
+            <p data-i18n="desc.reference">Para EI constante e carga uniforme q (Resistência dos Materiais):</p>
+            <ul class="list-disc space-y-1 pl-5">
+              <li><span data-i18n="desc.ref.ss">Simplesmente apoiada:</span> $w(x) = \dfrac{q}{24EI}\left(L^3 x - 2L x^3 + x^4\right)$, $w_{\max} = \dfrac{5 q L^4}{384 EI}$, $M_{\max} = \dfrac{q L^2}{8}$, $V_{\max} = \dfrac{q L}{2}$</li>
+              <li><span data-i18n="desc.ref.cantilever">Em balanço:</span> $w(x) = \dfrac{q}{24EI}\left(6L^2 x^2 - 4L x^3 + x^4\right)$, $w_{\max} = \dfrac{q L^4}{8 EI}$, $M_{\max} = \dfrac{q L^2}{2}$, $V_{\max} = qL$</li>
+              <li><span data-i18n="desc.ref.ff">Engastada-engastada:</span> $w(x) = \dfrac{q\,x^2 (L - x)^2}{24EI}$, $w_{\max} = \dfrac{q L^4}{384 EI}$, $M_{\max} = \dfrac{q L^2}{12}$, $V_{\max} = \dfrac{q L}{2}$</li>
+            </ul>
+            <p class="mt-2" data-i18n="desc.reference.note">Nos demais casos (engastada-apoiada, outros carregamentos ou propriedades variáveis) a simulação mostra só o resultado numérico.</p>
+          </section>
+        </div>
+      </details>
+      <div>
+        <div data-mm-params>
+          <h3 data-i18n="section.params">Parâmetros</h3>
 
-      <div class="mb-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-        <h3 class="font-semibold text-lg text-blue-800 mb-2">Sobre o problema</h3>
-        <p class="text-gray-700 mb-2">Versão expandida do problema 5.2.5 (apostila) com análise completa de flexão de vigas usando elementos finitos de viga de Euler-Bernoulli. Inclui múltiplos tipos de carregamento, condições de contorno, propriedades variáveis e análises completas.</p>
-        <h4 class="font-semibold text-blue-700 mt-4 mb-1">Funcionalidades</h4>
-        <ul class="text-gray-700 list-disc list-inside space-y-1">
-          <li><strong>Carregamentos:</strong> Uniforme, linear, triangular, senoidal, pontual</li>
-          <li><strong>Condições de contorno:</strong> Simplesmente apoiada, em balanço, engastada-engastada, engastada-apoiada</li>
-          <li><strong>Propriedades variáveis:</strong> Constante, linear, parabólica</li>
-          <li><strong>Análises:</strong> Deslocamentos, momentos fletores, esforços cortantes</li>
-          <li><strong>Casos pré-definidos:</strong> Viga de concreto, viga de aço, cobertura em balanço, viga de ponte</li>
-        </ul>
-        <h4 class="font-semibold text-blue-700 mt-4 mb-1">Equação diferencial</h4>
-        <p class="text-gray-700">EI(x) d⁴w/dx⁴ = q(x), onde w é o deslocamento vertical, E(x) é o módulo de elasticidade variável, I(x) é o momento de inércia variável e q(x) é o carregamento distribuído.</p>
-        <h4 class="font-semibold text-blue-700 mt-4 mb-1">Solução Analítica</h4>
-        <p class="text-gray-700">Disponível apenas para propriedades constantes (E e I constantes) e carregamento uniforme. Para propriedades variáveis, apenas o MEF fornece a solução numérica.</p>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-lg shadow p-5">
-          <h3 class="text-lg font-semibold text-blue-700 mb-4">Parâmetros</h3>
-          
-          <!-- Casos Pré-definidos -->
-          <div class="mb-4 p-3 bg-gray-50 rounded-lg">
-            <label for="preset_cases" class="block text-sm font-medium text-gray-700 mb-2">Casos Pré-definidos</label>
+          <div class="mb-4 p-3 bg-mm-surface2 rounded-lg">
+            <label for="preset_cases" class="block text-sm font-medium text-mm-text mb-2" data-i18n="input.preset_cases">Casos pré-definidos</label>
             <div class="flex gap-2">
-              <select id="preset_cases" class="flex-1 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <option value="">Selecione um caso...</option>
-                <option value="concrete_beam">Viga de Concreto</option>
-                <option value="steel_beam">Viga de Aço</option>
-                <option value="cantilever_roof">Cobertura em Balanço</option>
-                <option value="bridge_beam">Viga de Ponte</option>
+              <select id="preset_cases" class="flex-1">
+                <option value="" data-i18n="option.preset_cases.none">Selecione um caso...</option>
+                <option value="concrete_beam" data-i18n="option.preset_cases.concrete_beam">Viga de concreto</option>
+                <option value="steel_beam" data-i18n="option.preset_cases.steel_beam">Viga de aço</option>
+                <option value="cantilever_roof" data-i18n="option.preset_cases.cantilever_roof">Cobertura em balanço</option>
+                <option value="bridge_beam" data-i18n="option.preset_cases.bridge_beam">Viga de ponte</option>
               </select>
-              <button id="loadCase" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-3 rounded text-sm">Carregar</button>
+              <button id="loadCase"><span data-i18n="btn.load_case">Carregar</span></button>
             </div>
           </div>
 
-          <!-- Parâmetros Básicos -->
           <div class="space-y-3">
-            <div><label for="L" class="block text-sm font-medium text-gray-700">Comprimento (L) [m]</label><input type="number" id="L" value="2.0" step="0.1" min="0.1" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500" /></div>
-            <div><label for="nel" class="block text-sm font-medium text-gray-700">Número de elementos</label><input type="number" id="nel" value="20" min="2" step="1" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500" /></div>
-            
-            <!-- Propriedades Materiais -->
+            <div><label for="L" class="block text-sm font-medium text-mm-text" data-i18n="input.L">Comprimento L [m]</label><input type="number" id="L" value="2.0" step="0.1" min="0.1" /></div>
+            <div><label for="nel" class="block text-sm font-medium text-mm-text" data-i18n="input.nel">Número de elementos nₑ</label><input type="number" id="nel" value="20" min="2" step="1" /></div>
+
             <div class="grid grid-cols-2 gap-3">
-              <div><label for="E" class="block text-sm font-medium text-gray-700">E [GPa]</label><input type="number" id="E" value="200.0" step="1.0" min="1.0" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500" /></div>
-              <div><label for="I" class="block text-sm font-medium text-gray-700">I [cm⁴]</label><input type="number" id="I" value="1000.0" step="10.0" min="1.0" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500" /></div>
+              <div><label for="E" class="block text-sm font-medium text-mm-text" data-i18n="input.E">Módulo de elasticidade E [GPa]</label><input type="number" id="E" value="200.0" step="1.0" min="1.0" /></div>
+              <div><label for="I" class="block text-sm font-medium text-mm-text" data-i18n="input.I">Momento de inércia I [cm⁴]</label><input type="number" id="I" value="1000.0" step="10.0" min="1.0" /></div>
             </div>
-            
-            <!-- Carregamento -->
-            <div><label for="q" class="block text-sm font-medium text-gray-700">Magnitude do Carregamento [kN/m]</label><input type="number" id="q" value="10.0" step="0.1" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500" /></div>
-            
-            <!-- Tipo de Carregamento -->
+
+            <div><label for="q" class="block text-sm font-medium text-mm-text" data-i18n="input.q">Magnitude do carregamento q [kN/m]</label><input type="number" id="q" value="10.0" step="0.1" /></div>
+
             <div>
-              <label for="load_type" class="block text-sm font-medium text-gray-700">Tipo de Carregamento</label>
-              <select id="load_type" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <option value="uniform">Uniforme</option>
-                <option value="linear">Linear</option>
-                <option value="triangular">Triangular</option>
-                <option value="sinusoidal">Senoidal</option>
-                <option value="point">Pontual</option>
+              <label for="load_type" class="block text-sm font-medium text-mm-text" data-i18n="input.load_type">Tipo de carregamento</label>
+              <select id="load_type">
+                <option value="uniform" data-i18n="option.load_type.uniform">Uniforme</option>
+                <option value="linear" data-i18n="option.load_type.linear">Linear</option>
+                <option value="triangular" data-i18n="option.load_type.triangular">Triangular</option>
+                <option value="sinusoidal" data-i18n="option.load_type.sinusoidal">Senoidal</option>
+                <option value="point" data-i18n="option.load_type.point">Pontual</option>
               </select>
             </div>
-            
-            <!-- Condições de Contorno -->
+
             <div>
-              <label for="bc_type" class="block text-sm font-medium text-gray-700">Condições de Contorno</label>
-              <select id="bc_type" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <option value="simply_supported">Simplesmente Apoiada</option>
-                <option value="cantilever">Em Balanço</option>
-                <option value="fixed_fixed">Engastada-Engastada</option>
-                <option value="fixed_supported">Engastada-Apoiada</option>
+              <label for="bc_type" class="block text-sm font-medium text-mm-text" data-i18n="input.bc_type">Condições de contorno</label>
+              <select id="bc_type">
+                <option value="simply_supported" data-i18n="option.bc_type.simply_supported">Simplesmente apoiada</option>
+                <option value="cantilever" data-i18n="option.bc_type.cantilever">Em balanço</option>
+                <option value="fixed_fixed" data-i18n="option.bc_type.fixed_fixed">Engastada-engastada</option>
+                <option value="fixed_supported" data-i18n="option.bc_type.fixed_supported">Engastada-apoiada</option>
               </select>
             </div>
-            
-            <!-- Propriedades Variáveis -->
+
             <div>
-              <label for="prop_type" class="block text-sm font-medium text-gray-700">Propriedades Materiais</label>
-              <select id="prop_type" class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500">
-                <option value="constant">Constante</option>
-                <option value="linear">Linear</option>
-                <option value="parabolic">Parabólica</option>
+              <label for="prop_type" class="block text-sm font-medium text-mm-text" data-i18n="input.prop_type">Propriedades materiais</label>
+              <select id="prop_type">
+                <option value="constant" data-i18n="option.prop_type.constant">Constante</option>
+                <option value="linear" data-i18n="option.prop_type.linear">Linear</option>
+                <option value="parabolic" data-i18n="option.prop_type.parabolic">Parabólica</option>
               </select>
             </div>
-            
-            <!-- Opções -->
+
             <div class="flex items-center">
-              <input type="checkbox" id="show_analytical" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked />
-              <label for="show_analytical" class="ml-2 text-sm text-gray-700">Mostrar solução analítica</label>
+              <input type="checkbox" id="show_analytical" checked />
+              <label for="show_analytical" class="ml-2 text-sm text-mm-text" data-i18n="input.show_analytical">Mostrar solução analítica</label>
             </div>
-            <p class="text-xs text-gray-500 mt-1">💡 Disponível apenas para propriedades constantes e carregamento uniforme</p>
+            <p class="text-xs text-mm-muted mt-1" data-i18n="note.analytical_only">Disponível apenas para propriedades constantes e carregamento uniforme</p>
           </div>
-          
+
           <div class="flex gap-3 mt-5">
-            <button id="runViga1D" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded">Rodar Simulação</button>
-            <button id="showCodeBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded"><i class="fas fa-code mr-2"></i>Ver Código</button>
+            <button id="run-btn"><span data-i18n="btn.run">Executar</span></button>
+            <button id="show-code-btn"><span data-i18n="btn.show_code">Ver código-fonte</span></button>
           </div>
         </div>
 
-        <div class="md:col-span-2 bg-white rounded-lg shadow p-5">
-          <h3 class="text-lg font-semibold text-blue-700 mb-4">Resultados da Análise</h3>
-          <div class="mb-3 text-sm text-gray-600">
-            <p><strong>Análise completa:</strong> Deslocamentos, carregamento, propriedades materiais, momentos fletores e esforços cortantes</p>
+        <div data-mm-result>
+          <h3 data-i18n="result.title">Resultados da análise</h3>
+          <div class="mb-3 text-sm text-mm-muted">
+            <p><strong><span data-i18n="result.note.full.label">Análise completa</span>:</strong> <span data-i18n="result.note.full">Deslocamentos, carregamento, propriedades materiais, momentos fletores e esforços cortantes</span></p>
           </div>
-          <div id="viga1d-output" class="w-full min-h-[900px] bg-gray-50 rounded flex items-center justify-center text-gray-500">Clique em "Rodar Simulação" para iniciar</div>
-        </div>
-      </div>
-
-      <div id="codeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-        <div class="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold text-gray-800">Código Fonte - Viga 1D MEF</h3>
-            <button id="closeModalBtn" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times text-xl"></i></button>
-          </div>
-          <pre><code class="language-python" id="sourceCode"></code></pre>
+          <div id="plot-output"></div>
         </div>
       </div>
     </div>
 
     <script type="py" src="simulation.py" config="config.toml"></script>
-    <script>
-      async function loadSourceCode() {
-        try {
-          const response = await fetch('simulation.py');
-          const code = await response.text();
-          document.getElementById('sourceCode').textContent = code;
-          Prism.highlightElement(document.getElementById('sourceCode'));
-        } catch (e) { console.error(e); }
-      }
-      document.getElementById('showCodeBtn').addEventListener('click', () => {
-        const m = document.getElementById('codeModal'); m.classList.remove('hidden'); m.classList.add('flex'); loadSourceCode();
-      });
-      document.getElementById('closeModalBtn').addEventListener('click', () => {
-        const m = document.getElementById('codeModal'); m.classList.add('hidden'); m.classList.remove('flex');
-      });
-      document.getElementById('codeModal').addEventListener('click', (e) => {
-        const m = document.getElementById('codeModal'); if (e.target === m) { m.classList.add('hidden'); m.classList.remove('flex'); }
-      });
-    </script>
-    <footer class="mt-8 text-center text-gray-500 text-sm opacity-80 w-full pb-6">
-    MinervaMesh &middot; Desenvolvido por Luiz Gustavo Santos Farias &middot;
-    <a href="https://github.com/lgsfarias/minervamesh" class="underline hover:text-gray-700">Código-fonte no GitHub</a>
-    &middot; Licença MIT
-  </footer>
 </body>
 </html>

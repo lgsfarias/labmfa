@@ -22,6 +22,8 @@ import imageio.v2 as imageio
 import io
 import base64
 
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
+
 
 # ==============================
 # 1. Condição inicial u(x,0)
@@ -41,7 +43,6 @@ def initial_displacement(x, L, mode):
 # ==============================
 # 2. Executar simulação
 # ==============================
-@when("click", "#runWaveBtn")
 async def run_simulation(event=None):
     """Executa a simulação, monta frames e publica um GIF no contêiner HTML."""
     # parâmetros
@@ -73,14 +74,8 @@ async def run_simulation(event=None):
     u[0] = 0.0
     u[-1] = 0.0
 
-    # abrir modal de execução durante a simulação
-    container = document.getElementById("wave-output")
-    sim_loading = document.getElementById("sim-loading")
-    if sim_loading is not None:
-        try:
-            sim_loading.showModal()
-        except Exception:
-            pass
+    container = document.getElementById("plot-output")
+    progress("start", "counter", nt)
     # pequena espera para o DOM aplicar o modal antes do processamento pesado
     await asyncio.sleep(0.05)
 
@@ -100,22 +95,22 @@ async def run_simulation(event=None):
     def render_frame(u_frame, t):
         """Desenha um frame e retorna a imagem como array para o GIF."""
         fig, ax = plt.subplots(figsize=(8, 4))
-        ax.plot(x, u_frame, label="Numérico", color="#3B82F6")
+        ax.plot(x, u_frame, label=i18n_t("py.legend.numeric"), color="#3B82F6")
         if mode == "senoide":
             u_ana_dense = np.sin(np.pi * x_dense / L) * np.cos(c * np.pi * t / L)
-            ax.plot(x_dense, u_ana_dense, '--', label="Analítico", color="#EF4444")
+            ax.plot(x_dense, u_ana_dense, '--', label=i18n_t("py.legend.analytical"), color="#EF4444")
         elif mode == "pulso":
             # Solução analítica por d'Alembert com extensão ímpar 2L-periódica (u_t(x,0)=0):
             u_ana_dense = 0.5 * (
                 odd_periodic_extension(x_dense - c * t, L) +
                 odd_periodic_extension(x_dense + c * t, L)
             )
-            ax.plot(x_dense, u_ana_dense, '--', label="Analítico (d'Alembert)", color="#EF4444")
+            ax.plot(x_dense, u_ana_dense, '--', label=i18n_t("py.legend.dalembert"), color="#EF4444")
         ax.set_ylim(-1.2, 1.2)
         ax.set_xlim(0, L)
         ax.set_xlabel("x")
         ax.set_ylabel("u")
-        ax.set_title(f"Equação da Onda 1D - Leapfrog | t = {t:.3f}s")
+        ax.set_title(i18n_t("py.plot.title").format(t=t))
         ax.grid(True, linestyle='--', alpha=0.5)
         ax.legend()
         plt.tight_layout()
@@ -141,19 +136,30 @@ async def run_simulation(event=None):
 
         if n % max(1, nt // 50) == 0 or n == nt:
             frames.append(render_frame(u, n*dt))
+            progress("step", n, n*dt)
+            await asyncio.sleep(0)  # cede o controle ao browser para repintar o progresso
 
     # ==============================
     # 5. Montar GIF e publicar no DOM
     # ==============================
+    progress("encoding")
+    await asyncio.sleep(0)
     gif_buffer = io.BytesIO()
     imageio.mimsave(gif_buffer, frames, format='GIF', duration=0.08, loop=0)
     gif_buffer.seek(0)
     gif_base64 = base64.b64encode(gif_buffer.read()).decode("utf-8")
     container.innerHTML = f"<img src='data:image/gif;base64,{gif_base64}' class='rounded shadow w-full'/>"
-    if sim_loading is not None:
-        try:
-            sim_loading.close()
-        except Exception:
-            pass
+    progress("done")
 
 
+@when("click", "#run-btn")
+async def run_simulation_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
+    try:
+        await run_simulation(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")

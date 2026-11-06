@@ -22,6 +22,8 @@ import imageio.v2 as imageio
 import io
 import base64
 
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
+
 
 # ==============================
 # 1. Função de condutividade térmica k(x)
@@ -58,7 +60,7 @@ def analytical_steady_state(x, L, k1, k2):
 
 
 # ==============================
-# 2. Matrizes de elemento para MEF 1D
+# 3. Matrizes de elemento para MEF 1D
 # ==============================
 def element_matrices_1d(x1, x2, k_avg, rho_cp):
     """Calcula as matrizes de elemento para condução 1D."""
@@ -74,7 +76,7 @@ def element_matrices_1d(x1, x2, k_avg, rho_cp):
 
 
 # ==============================
-# 3. Montar sistema global
+# 4. Montar sistema global
 # ==============================
 def assemble_system(n_elements, L, rho_cp=1.0, k1=5.0, k2=1.0):
     """Monta as matrizes globais K e M do sistema MEF."""
@@ -101,7 +103,6 @@ def assemble_system(n_elements, L, rho_cp=1.0, k1=5.0, k2=1.0):
         # Calcular condutividade média do elemento
         # Para elementos que cruzam a fronteira x=L/2, usar média ponderada
         if x1 < L/2 and x2 > L/2:
-            # Elemento cruza a fronteira - calcular média ponderada
             frac_left = (L/2 - x1) / (x2 - x1)  # fração à esquerda da fronteira
             frac_right = (x2 - L/2) / (x2 - x1)  # fração à direita da fronteira
             k_avg = frac_left * k1 + frac_right * k2
@@ -120,19 +121,19 @@ def assemble_system(n_elements, L, rho_cp=1.0, k1=5.0, k2=1.0):
 
 
 # ==============================
-# 4. Renderizar frame
+# 5. Renderizar frame
 # ==============================
 def render_frame(T, x_nodes, t, n_elements, k1=1.0, k2=5.0):
     """Desenha um frame e retorna a imagem como array para o GIF."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Plotar temperatura numérica
-    ax.plot(x_nodes, T, 'o-', label="MEF", color="#3B82F6", linewidth=2, markersize=4)
+    ax.plot(x_nodes, T, 'o-', label=i18n_t("py.legend.fem"), color="#3B82F6", linewidth=2, markersize=4)
 
     # Plotar solução analítica de regime permanente (referência)
     x_dense = np.linspace(0, x_nodes[-1], 200)
     T_analytical = analytical_steady_state(x_dense, x_nodes[-1], k1, k2)
-    ax.plot(x_dense, T_analytical, '--', label="Regime permanente (analítico)", color="#EF4444", linewidth=2)
+    ax.plot(x_dense, T_analytical, '--', label=i18n_t("py.legend.steady"), color="#EF4444", linewidth=2)
 
     # Plotar condutividade térmica como fundo
     k_values = thermal_conductivity(x_dense, x_nodes[-1], k1, k2)
@@ -140,20 +141,19 @@ def render_frame(T, x_nodes, t, n_elements, k1=1.0, k2=5.0):
     # Criar segundo eixo para k(x)
     ax2 = ax.twinx()
     ax2.plot(x_dense, k_values, ':', color='green', alpha=0.7, linewidth=1)
-    ax2.set_ylabel('Condutividade k(x)', color='green', fontsize=12)
+    ax2.set_ylabel(i18n_t("py.plot.k_ylabel"), color='green', fontsize=12)
     ax2.tick_params(axis='y', labelcolor='green')
     ax2.set_ylim(0, max(k1, k2) + 1)
 
     ax.set_ylim(-0.1, 1.1)
     ax.set_xlim(0, x_nodes[-1])
-    ax.set_xlabel("Posição x", fontsize=12)
-    ax.set_ylabel("Temperatura T", fontsize=12)
-    ax.set_title(f"Condução Transiente 1D - MEF (n={n_elements}) | t = {t:.3f}s", fontsize=14)
+    ax.set_xlabel(i18n_t("py.plot.xlabel"), fontsize=12)
+    ax.set_ylabel(i18n_t("py.plot.ylabel"), fontsize=12)
+    ax.set_title(i18n_t("py.plot.title").format(n=n_elements, t=t), fontsize=14)
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.legend(fontsize=12)
 
     # Adicionar linha vertical no meio para mostrar mudança de k
-    # Linha vertical no meio
     ax.axvline(x=x_nodes[-1]/2, color='red', linestyle=':', alpha=0.5)
 
     # Rótulos em y = k1 e y = k2 no eixo de k(x)
@@ -172,9 +172,8 @@ def render_frame(T, x_nodes, t, n_elements, k1=1.0, k2=5.0):
 
 
 # ==============================
-# 5. Executar simulação
+# 6. Executar simulação
 # ==============================
-@when("click", "#runHeatBtn")
 async def run_simulation(event=None):
     """Executa a simulação MEF, monta frames e publica um GIF no contêiner HTML."""
     # parâmetros
@@ -214,26 +213,20 @@ async def run_simulation(event=None):
         B[i, :] = 0
         B[i, i] = 1
 
-    # abrir modal de execução durante a simulação
-    container = document.getElementById("heat-output")
-    sim_loading = document.getElementById("sim-loading")
-    if sim_loading is not None:
-        try:
-            sim_loading.showModal()
-        except Exception:
-            pass
-    await asyncio.sleep(0.05)
-
+    container = document.getElementById("plot-output")
     frames = []
     nt = max(1, int(tmax / dt))
+
+    progress("start", "counter", nt)
+    await asyncio.sleep(0.05)
 
     # Frame inicial
     frames.append(render_frame(T, x_nodes, 0.0, n_elements, k1, k2))
 
     # ==============================
-    # 6. Loop temporal (Crank-Nicolson com suavização suave)
+    # 7. Loop temporal (método θ; θ = 0,5 é Crank-Nicolson)
     # ==============================
-    T_prev = T.copy()  # Para suavização temporal
+    T_prev = T.copy()
 
     for n in range(1, nt + 1):
         # Resolver sistema: A * T^(n+1) = B * T^n + f
@@ -255,10 +248,14 @@ async def run_simulation(event=None):
 
         if n % max(1, nt // 50) == 0 or n == nt:
             frames.append(render_frame(T, x_nodes, n*dt, n_elements, k1, k2))
+            progress("step", n, n*dt)
+            await asyncio.sleep(0)  # cede o controle ao browser para repintar o progresso
 
     # ==============================
-    # 7. Montar GIF e publicar no DOM
+    # 8. Montar GIF e publicar no DOM
     # ==============================
+    progress("encoding")
+    await asyncio.sleep(0)
     gif_buffer = io.BytesIO()
     imageio.mimsave(gif_buffer, frames, format='GIF', duration=0.1, loop=0)
     gif_buffer.seek(0)
@@ -277,11 +274,11 @@ async def run_simulation(event=None):
 
     metrics_html = f"""
     <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded w-full">
-        <h4 class="font-semibold text-blue-800 mb-1">Validação</h4>
-        <p class="text-sm text-gray-700"><strong>Tempo final:</strong> {t_final:.3f} s ({frac_tau*100:.1f}% de τ_dif = {tau_dif:.2f} s)</p>
-        <p class="text-sm text-gray-700"><strong>T(L/2) MEF:</strong> {T_meio_mef:.6f} °C</p>
-        <p class="text-sm text-gray-700"><strong>T(L/2) analítica (regime permanente, k2/(k1+k2)):</strong> {T_meio_ana:.6f} °C</p>
-        <p class="text-sm text-gray-700"><strong>Desvio em x = L/2:</strong> {erro_meio:.2e} °C</p>
+        <h4 class="font-semibold text-blue-800 mb-1">{i18n_t("py.validation")}</h4>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.t_final_label")}</strong> {i18n_t("py.val.t_final").format(t_final=t_final, frac=frac_tau*100, tau_dif=tau_dif)}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.t_mid_fem_label")}</strong> {T_meio_mef:.6f} °C</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.t_mid_ana_label")}</strong> {T_meio_ana:.6f} °C</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.dev_label")}</strong> {erro_meio:.2e} °C</p>
     </div>
     """
     container.innerHTML = (
@@ -290,9 +287,17 @@ async def run_simulation(event=None):
         f"{metrics_html}"
         f"</div>"
     )
+    progress("done")
 
-    if sim_loading is not None:
-        try:
-            sim_loading.close()
-        except Exception:
-            pass
+
+@when("click", "#run-btn")
+async def run_simulation_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
+    try:
+        await run_simulation(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")

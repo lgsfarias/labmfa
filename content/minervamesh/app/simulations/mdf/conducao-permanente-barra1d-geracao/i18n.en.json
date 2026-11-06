@@ -1,0 +1,18 @@
+{
+  "title": "1D Steady Conduction with Internal Heat Generation (FDM)",
+  "desc.equation": "Steady heat conduction in a bar with uniform internal heat generation:",
+  "desc.domain": "Bar of length L = 1 (fixed in the code), discretized into nₓ equally spaced nodes:",
+  "desc.bc.left": "Left end, prescribed temperature (fixed in the code):",
+  "desc.bc.right": "Right end, prescribed temperature (fixed in the code):",
+  "desc.method": "Finite Difference Method: the second derivative is approximated by second-order central differences at the nₓ − 2 interior nodes, and the resulting tridiagonal linear system is solved directly.",
+  "desc.reference": "Analytical solution obtained by direct integration of the equation with the boundary conditions above:",
+  "input.nx": "Number of nodes nₓ",
+  "input.alpha": "Coefficient α",
+  "input.Q": "Heat generation Q",
+  "py.legend.numeric": "Numerical solution",
+  "py.legend.analytical": "Analytical solution",
+  "py.legend.params": "Parameters:\nNodes (nx): {nx} | α: {alpha} | Q: {Q}",
+  "py.plot.title": "Comparison: numerical vs analytical solution",
+  "py.plot.xlabel": "Position (x)",
+  "py.plot.ylabel": "Temperature (T)"
+}

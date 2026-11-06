@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 from js import document
 from pyscript import when
 import asyncio
-import io
-import imageio.v2 as imageio
-import base64
+
+from mmplot import plot_begin, plot_fig, plot_show, plot_append_html  # gráfico interativo (assets/mmplot.py)
+
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
 
 
 # ==============================
@@ -29,14 +30,8 @@ def analytical_solution(x, Q, k, L, T0, TL):
 # ==============================
 # 2. Executar simulação MEF 1D
 # ==============================
-@when("click", "#runMEF1D")
 async def run_mef_1d(event=None):
-    # Abrir modal de execução
-    sim_loading = document.getElementById("sim-loading")
-    try:
-        sim_loading.showModal()
-    except Exception:
-        pass
+    progress("start", "spinner")
     await asyncio.sleep(0.05)
 
     # Parâmetros
@@ -93,46 +88,40 @@ async def run_mef_1d(event=None):
     x_max_ana = float(x_dense[int(np.argmax(T_ana_dense))])
 
     # Plot
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(x, T, 'o-', label='MEF 1D', color='#3B82F6')
-    ax.plot(x_dense, T_ana_dense, '--', label='Analítica', color='#EF4444')
+    plot_begin()
+    fig, ax = plt.subplots(**plot_fig(8, 4))
+    ax.plot(x, T, 'o-', label=i18n_t("py.legend.fem"), color='#3B82F6')
+    ax.plot(x_dense, T_ana_dense, '--', label=i18n_t("py.legend.analytical"), color='#EF4444')
     ax.set_xlabel('x [m]')
-    ax.set_ylabel('Temperatura [°C]')
-    ax.set_title('Condução Permanente 1D (MEF)')
+    ax.set_ylabel(i18n_t("py.plot.ylabel"))
+    ax.set_title(i18n_t("py.plot.title"))
     ax.grid(True, linestyle='--', alpha=0.5)
     ax.legend()
     plt.tight_layout()
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close(fig)
-    buf.seek(0)
-    img = imageio.imread(buf)
-    gif_buffer = io.BytesIO()
-    imageio.mimsave(gif_buffer, [img], format='GIF', duration=1.0)
-    gif_buffer.seek(0)
-    gif_base64 = base64.b64encode(gif_buffer.read()).decode('utf-8')
+    plot_show(i18n_t("title"))
 
-    container = document.getElementById("mef1d-output")
     metrics_html = f"""
     <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded w-full">
-        <h4 class="font-semibold text-blue-800 mb-1">Validação</h4>
-        <p class="text-sm text-gray-700"><strong>Malha:</strong> {nel} elementos lineares, h = {h:.4f} m</p>
-        <p class="text-sm text-gray-700"><strong>T_max (MEF):</strong> {T_max_mef:.6f} °C em x = {x_max_mef:.3f} m</p>
-        <p class="text-sm text-gray-700"><strong>T_max (analítica):</strong> {T_max_ana:.6f} °C em x = {x_max_ana:.3f} m</p>
-        <p class="text-sm text-gray-700"><strong>Erro máximo nodal:</strong> {e_max:.2e} °C</p>
+        <h4 class="font-semibold text-blue-800 mb-1">{i18n_t("py.validation")}</h4>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.mesh_label")}</strong> {i18n_t("py.val.mesh").format(nel=nel, h=h)}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.tmax_fem_label")}</strong> {i18n_t("py.val.at_x").format(T=T_max_mef, x=x_max_mef)}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.tmax_ana_label")}</strong> {i18n_t("py.val.at_x").format(T=T_max_ana, x=x_max_ana)}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.val.err_label")}</strong> {e_max:.2e} °C</p>
     </div>
     """
-    container.innerHTML = (
-        f"<div class='flex flex-col gap-3 w-full'>"
-        f"<img src='data:image/gif;base64,{gif_base64}' class='rounded shadow w-full'/>"
-        f"{metrics_html}"
-        f"</div>"
-    )
+    plot_append_html(metrics_html)
+    progress("done")
 
+
+@when("click", "#run-btn")
+async def run_mef_1d_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
     try:
-        sim_loading.close()
-    except Exception:
-        pass
-
-
+        await run_mef_1d(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")

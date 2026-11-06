@@ -18,6 +18,8 @@ curl -fsSL "https://github.com/$REPO/archive/refs/tags/$TAG.tar.gz" | tar -xz --
 cp "$TMP/src/index.html" "$TMP/src/favicon.ico" "$TMP/src/LICENSE" "$TMP/app/"
 cp -R "$TMP/src/assets" "$TMP/src/simulations" "$TMP/app/"
 rm -f "$TMP/app/assets/tailwind.src.css"
+# Embedded mode (MinervaMesh >= v1.2.0): hides the platform header; the site's theme wraps the pages.
+find "$TMP/app" -name index.html -exec sed -i '' 's/<body /<body data-mm-embedded /' {} +
 find "$TMP/app" -name '.DS_Store' -delete
 printf '%s\n' "$TAG" > "$TMP/app/VERSION"
 

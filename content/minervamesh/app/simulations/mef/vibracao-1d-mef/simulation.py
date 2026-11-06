@@ -13,10 +13,11 @@ import matplotlib.pyplot as plt
 from js import document
 from pyscript import when
 import asyncio
-import io
-import imageio.v2 as imageio
-import base64
 from scipy.linalg import eigh
+
+from mmplot import plot_begin, plot_fig, plot_show, plot_append_html  # gráfico interativo (assets/mmplot.py)
+
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
 
 
 # ==============================
@@ -76,14 +77,8 @@ def analytical_frequencies_fixed_free(L, E, rho, n_modes=5):
 # ==============================
 # 3. Executar simulação MEF para vibração 1D
 # ==============================
-@when("click", "#runVibracao1D")
 async def run_vibracao_1d(event=None):
-    # Abrir modal de execução
-    sim_loading = document.getElementById("sim-loading")
-    try:
-        sim_loading.showModal()
-    except Exception:
-        pass
+    progress("start", "spinner")
     await asyncio.sleep(0.05)
 
     # Parâmetros básicos
@@ -199,75 +194,52 @@ async def run_vibracao_1d(event=None):
             freq_analytical = analytical_frequencies_fixed_free(L, E_base, rho_base, n_modes)
 
     # Determinar título da condição de contorno
-    bc_titles = {
-        "free_free": "Livre-Livre",
-        "fixed_fixed": "Engastada-Engastada", 
-        "fixed_free": "Engastada-Livre",
-        "fixed_supported": "Engastada-Apoiada"
-    }
-    bc_title = bc_titles.get(bc_type, "Desconhecida")
+    bc_titles = {k: i18n_t("py.bc." + k) for k in ("free_free", "fixed_fixed", "fixed_free", "fixed_supported")}
+    bc_title = bc_titles.get(bc_type, i18n_t("py.bc.unknown"))
 
-    # Plot avançado com múltiplos gráficos
-    fig = plt.figure(figsize=(14, 22))
-
-    # Layout: 7x1 grid (1 tabela + 5 modos + 1 propriedades)
-    gs = fig.add_gridspec(7, 1, height_ratios=[1.2, 2.2, 2.2, 2.2, 2.2, 2.2, 1.5], hspace=0.5)
-
-    # 1. Tabela de frequências
-    ax1 = fig.add_subplot(gs[0, :])
-    ax1.axis('off')
-
-    # Criar tabela de frequências
-    table_data = []
+    # Tabela de frequências naturais (em HTML, abaixo da figura; ver plot_append_html)
     show_analytical_table = show_analytical and prop_type == "constant"
-
+    rows_html = []
     for i in range(min(5, n_modes)):
-        row = [f'Modo {i+1}', f'{frequencies[i]:.2f} Hz']
+        cells = [i18n_t("py.table.mode_n").format(n=i+1), f"{frequencies[i]:.2f}"]
         if show_analytical_table and i < len(freq_analytical) and freq_analytical[i] > 0:
             error = abs(frequencies[i] - freq_analytical[i]) / freq_analytical[i] * 100
-            row.append(f'{freq_analytical[i]:.2f} Hz')
-            row.append(f'{error:.1f}%')
+            cells += [f"{freq_analytical[i]:.2f}", f"{error:.1f}%"]
         elif show_analytical_table:
-            row.extend(['-', '-'])
-        table_data.append(row)
+            cells += ["-", "-"]
+        rows_html.append("<tr>" + "".join(f"<td class='px-3 py-1 text-center'>{c}</td>" for c in cells) + "</tr>")
+    headers = [i18n_t("py.table.mode"), i18n_t("py.table.fem"), i18n_t("py.table.analytical"), i18n_t("py.table.error")] if show_analytical_table else [i18n_t("py.table.mode"), i18n_t("py.table.fem")]
+    metrics_html = (
+        "<div class=\"bg-blue-50 border-l-4 border-blue-400 p-3 rounded w-full\">"
+        f"<h4 class=\"font-semibold text-blue-800 mb-2\">{i18n_t('py.validation')}</h4>"
+        f"<p class=\"text-sm text-gray-700 mb-2\"><strong>{i18n_t('py.val.freq_label')}</strong> {i18n_t('py.val.case').format(bc=bc_title, prop=i18n_t('option.prop_type.' + prop_type).lower())}</p>"
+        "<table class=\"text-sm text-gray-700 border-collapse\"><thead><tr>"
+        + "".join(f"<th class='px-3 py-1 text-center font-semibold text-blue-800 border-b border-blue-200'>{h}</th>" for h in headers)
+        + "</tr></thead><tbody>" + "".join(rows_html) + "</tbody></table></div>"
+    )
 
-    # Definir cabeçalhos e larguras baseado nas condições
-    if show_analytical_table:
-        headers = ['Modo', 'MEF [Hz]', 'Analítica [Hz]', 'Erro [%]']
-        col_widths = [0.2, 0.2, 0.2, 0.2]
-    else:
-        headers = ['Modo', 'MEF [Hz]']
-        col_widths = [0.3, 0.3]
+    # Plot avançado com múltiplos gráficos
+    plot_begin()
+    fig = plt.figure(**plot_fig(14, 20))
 
-    table = ax1.table(cellText=table_data, colLabels=headers, 
-                     cellLoc='center', loc='center',
-                     colWidths=col_widths)
-    table.auto_set_font_size(False)
-    table.set_fontsize(12)
-    table.scale(1, 2)
-
-    # Colorir cabeçalho
-    for i in range(len(headers)):
-        table[(0, i)].set_facecolor('#4F46E5')
-        table[(0, i)].set_text_props(weight='bold', color='white')
-
-    ax1.set_title(f'Frequências Naturais - {bc_title}', fontsize=16, fontweight='bold', pad=50)
+    # Layout: 6x1 grid (5 modos + 1 propriedades)
+    gs = fig.add_gridspec(6, 1, height_ratios=[2.2, 2.2, 2.2, 2.2, 2.2, 1.5], hspace=0.5)
 
     # 2-6. Modos de vibração (5 modos fixos)
     colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6']
     for i in range(min(5, n_modes)):
-        ax = fig.add_subplot(gs[i+1, :])
+        ax = fig.add_subplot(gs[i, :])
 
         # Plotar modo de vibração
         ax.plot(x, eigenvectors[:, i], 'o-', color=colors[i], markersize=6, linewidth=3, 
-                label=f'Modo {i+1}: {frequencies[i]:.2f} Hz')
+                label=i18n_t("py.plot.mode_legend").format(n=i+1, f=frequencies[i]))
 
         # Adicionar linha de referência em zero
         ax.axhline(y=0, color='black', linestyle='--', alpha=0.3)
 
         ax.set_xlabel('x [m]', fontsize=14, fontweight='bold')
-        ax.set_ylabel('Amplitude Normalizada', fontsize=14, fontweight='bold')
-        ax.set_title(f'Modo de Vibração {i+1}', fontsize=16, fontweight='bold')
+        ax.set_ylabel(i18n_t("py.plot.amp_ylabel"), fontsize=14, fontweight='bold')
+        ax.set_title(i18n_t("py.plot.mode_title").format(n=i+1), fontsize=16, fontweight='bold')
         ax.grid(True, linestyle='--', alpha=0.5)
         ax.legend(fontsize=12)
         ax.tick_params(labelsize=12)
@@ -276,7 +248,7 @@ async def run_vibracao_1d(event=None):
         ax.scatter(x, eigenvectors[:, i], color=colors[i], s=50, zorder=5)
 
     # 7. Propriedades materiais
-    ax_props = fig.add_subplot(gs[6, :])
+    ax_props = fig.add_subplot(gs[5, :])
 
     # Plotar linha vermelha primeiro (E) com estilo mais visível
     line1 = ax_props.plot(x, E/1e9, 'r-', linewidth=4, label='E [GPa]', alpha=0.9, zorder=3)
@@ -287,9 +259,9 @@ async def run_vibracao_1d(event=None):
 
     # Configurar eixos e labels
     ax_props.set_xlabel('x [m]', fontsize=14, fontweight='bold')
-    ax_props.set_ylabel('Módulo de Elasticidade [GPa]', color='r', fontweight='bold', fontsize=14)
-    ax_props_twin.set_ylabel('Densidade [kg/m³]', color='b', fontweight='bold', fontsize=14)
-    ax_props.set_title('Propriedades Materiais', fontweight='bold', fontsize=16)
+    ax_props.set_ylabel(i18n_t("py.plot.E_ylabel"), color='r', fontweight='bold', fontsize=14)
+    ax_props_twin.set_ylabel(i18n_t("py.plot.rho_ylabel"), color='b', fontweight='bold', fontsize=14)
+    ax_props.set_title(i18n_t("py.plot.props_title"), fontweight='bold', fontsize=16)
 
     # Configurar cores dos ticks
     ax_props.tick_params(axis='y', labelcolor='r', labelsize=12)
@@ -310,24 +282,24 @@ async def run_vibracao_1d(event=None):
     ax_props.legend(loc='upper left', fontsize=12, framealpha=0.9, edgecolor='r')
     ax_props_twin.legend(loc='upper right', fontsize=12, framealpha=0.9, edgecolor='b')
 
-    # Converter para GIF
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
-    plt.close(fig)
-    buf.seek(0)
-    img = imageio.imread(buf)
-    gif_buffer = io.BytesIO()
-    imageio.mimsave(gif_buffer, [img], format='GIF', duration=1.0)
-    gif_buffer.seek(0)
-    gif_base64 = base64.b64encode(gif_buffer.read()).decode('utf-8')
+    # Sem bbox_inches='tight' (figura ao vivo), reduz as margens externas da figura
+    fig.subplots_adjust(top=0.98, bottom=0.03)
+    plot_show(i18n_t("title"))
+    plot_append_html(metrics_html)
+    progress("done")
 
-    container = document.getElementById("vibracao1d-output")
-    container.innerHTML = f"<img src='data:image/gif;base64,{gif_base64}' class='rounded shadow w-full'/>"
 
+@when("click", "#run-btn")
+async def run_vibracao_1d_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
     try:
-        sim_loading.close()
-    except Exception:
-        pass
+        await run_vibracao_1d(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")
 
 
 # ==============================

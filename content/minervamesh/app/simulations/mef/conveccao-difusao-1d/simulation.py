@@ -12,9 +12,10 @@ import matplotlib.pyplot as plt
 from js import document
 from pyscript import when
 import asyncio
-import io
-import imageio.v2 as imageio
-import base64
+
+from mmplot import plot_begin, plot_fig, plot_show, plot_append_html  # gráfico interativo (assets/mmplot.py)
+
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
 
 
 # ==============================
@@ -54,14 +55,8 @@ def analytical_solution(x, Q, k, rho_cp, u, L, T0, TL):
 # ==============================
 # 2. Executar simulação MEF 1D com convecção-difusão
 # ==============================
-@when("click", "#runConveccaoDifusao1D")
 async def run_conveccao_difusao_1d(event=None):
-    # Abrir modal de execução
-    sim_loading = document.getElementById("sim-loading")
-    try:
-        sim_loading.showModal()
-    except Exception:
-        pass
+    progress("start", "spinner")
     await asyncio.sleep(0.05)
 
     # Parâmetros
@@ -144,14 +139,15 @@ async def run_conveccao_difusao_1d(event=None):
     T_ana_mesh = analytical_solution(x, Q, k, rho_cp, u, L, T0, TL)
 
     # Plot
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    plot_begin()
+    fig, (ax1, ax2) = plt.subplots(2, 1, **plot_fig(10, 8))
     
     # Gráfico principal
-    ax1.plot(x, T, 'o-', label='MEF 1D', color='#3B82F6', markersize=6)
-    ax1.plot(x_dense, T_ana_dense, '--', label='Analítica', color='#EF4444', linewidth=2)
+    ax1.plot(x, T, 'o-', label=i18n_t("py.legend.fem"), color='#3B82F6', markersize=6)
+    ax1.plot(x_dense, T_ana_dense, '--', label=i18n_t("py.legend.analytical"), color='#EF4444', linewidth=2)
     ax1.set_xlabel('x [m]')
-    ax1.set_ylabel('Temperatura [°C]')
-    ax1.set_title('Convecção-Difusão 1D Permanente (MEF)')
+    ax1.set_ylabel(i18n_t("py.plot.ylabel"))
+    ax1.set_title(i18n_t("py.plot.title"))
     ax1.grid(True, linestyle='--', alpha=0.5)
     ax1.legend()
     
@@ -161,45 +157,43 @@ async def run_conveccao_difusao_1d(event=None):
     erro = np.maximum(erro, 1e-18)
     ax2.semilogy(x, erro, 'o-', color='#10B981', markersize=6)
     ax2.set_xlabel('x [m]')
-    ax2.set_ylabel('Erro Absoluto [°C]')
-    ax2.set_title('Erro entre Solução Numérica e Analítica (Escala Logarítmica)')
+    ax2.set_ylabel(i18n_t("py.plot.err_ylabel"))
+    ax2.set_title(i18n_t("py.plot.err_title"))
     ax2.grid(True, linestyle='--', alpha=0.5)
     # Adicionar texto explicativo
-    ax2.text(0.5, 0.5, f'Erro máximo: {np.max(erro):.2e} °C\n(Precisão de máquina)', 
+    ax2.text(0.5, 0.5, i18n_t("py.plot.err_text").format(err=np.max(erro)), 
              transform=ax2.transAxes, ha='center', va='center', 
              bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
              fontsize=10)
     
     plt.tight_layout()
 
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', dpi=150)
-    plt.close(fig)
-    buf.seek(0)
-    img = imageio.imread(buf)
-    gif_buffer = io.BytesIO()
-    imageio.mimsave(gif_buffer, [img], format='GIF', duration=1.0)
-    gif_buffer.seek(0)
-    gif_base64 = base64.b64encode(gif_buffer.read()).decode('utf-8')
-
-    container = document.getElementById("conveccao-difusao-output")
-    container.innerHTML = f"<img src='data:image/gif;base64,{gif_base64}' class='rounded shadow w-full'/>"
+    plot_show(i18n_t("title"))
 
     # Atualizar informações sobre Péclet
     pe_info = document.getElementById("pe-info")
     pe_info.innerHTML = f"""
     <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded">
-        <h4 class="font-semibold text-blue-800 mb-1">Informações da Simulação</h4>
-        <p class="text-sm text-gray-700"><strong>Número de Péclet:</strong> {Pe_local:.3f}</p>
-        <p class="text-sm text-gray-700"><strong>Estabilização SUPG:</strong> {'Sim' if use_supg else 'Não'}</p>
-        <p class="text-sm text-gray-700"><strong>Parâmetro τ:</strong> {tau:.6f}</p>
-        <p class="text-sm text-gray-700"><strong>Velocidade:</strong> {u:.3f} m/s</p>
-        <p class="text-sm text-gray-700"><strong>Tamanho elemento:</strong> {h:.4f} m</p>
-        <p class="text-sm text-gray-700"><strong>Erro máximo:</strong> {np.max(erro):.2e} °C</p>
+        <h4 class="font-semibold text-blue-800 mb-1">{i18n_t("py.info.title")}</h4>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.peclet")}</strong> {Pe_local:.3f}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.supg")}</strong> {i18n_t("py.yes") if use_supg else i18n_t("py.no")}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.tau")}</strong> {tau:.6f}</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.u")}</strong> {u:.3f} m/s</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.h")}</strong> {h:.4f} m</p>
+        <p class="text-sm text-gray-700"><strong>{i18n_t("py.info.err")}</strong> {np.max(erro):.2e} °C</p>
     </div>
     """
+    progress("done")
 
+
+@when("click", "#run-btn")
+async def run_conveccao_difusao_1d_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
     try:
-        sim_loading.close()
-    except Exception:
-        pass
+        await run_conveccao_difusao_1d(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")

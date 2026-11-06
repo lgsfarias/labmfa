@@ -2,7 +2,7 @@ MinervaMesh
 -----------
 
 :date: 2026-10-06 17:00
-:modified: 2026-10-06 17:00
+:modified: 2026-11-06 17:00
 :slug: minervamesh
 :summary: MinervaMesh, an in-browser platform for numerical simulation in engineering education
 

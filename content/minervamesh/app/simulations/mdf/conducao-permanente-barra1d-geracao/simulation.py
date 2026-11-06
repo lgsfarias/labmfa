@@ -13,7 +13,13 @@ Utiliza o método das diferenças finitas para a solução numérica.
 import numpy as np
 import matplotlib.pyplot as plt
 from js import document
-from pyodide.ffi import create_proxy
+from pyscript import when
+import asyncio
+
+from mmplot import plot_begin, plot_fig, plot_show, plot_append_html  # gráfico interativo (assets/mmplot.py)
+
+from mmcommon import i18n_t, progress  # textos traduzidos e indicador de progresso (assets/mmcommon.py)
+
 
 # ==============================
 # 1. Solução Analítica
@@ -44,10 +50,13 @@ def analytical_solution(x, Q, alpha, L):
 # ==============================
 # 2. Função Principal de Simulação
 # ==============================
-def runSimulation(event):
+async def runSimulation(event=None):
     """
     Executa a simulação de condução de calor e plota os resultados.
     """
+    progress("start", "spinner")
+    await asyncio.sleep(0.05)
+
     # Parâmetros do problema
     L = 1.0  # Comprimento da barra
     nx = int(document.getElementById("nx").value) - 2  # Número de pontos internos
@@ -89,28 +98,35 @@ def runSimulation(event):
     # ==============================
     # 6. Visualização dos Resultados
     # ==============================
-    plt.figure(figsize=(10, 6))
+    plot_begin()
+    plt.figure(**plot_fig(10, 6))
     x = np.linspace(0, L, nx + 2)
-    plt.plot(x, T, 'o-', label="Solução Numérica", color='#3B82F6', linewidth=2, markersize=8)
-    plt.plot(x_analytical, T_analytical, '--', label="Solução Analítica", color='#EF4444', linewidth=2)
+    plt.plot(x, T, 'o-', label=i18n_t("py.legend.numeric"), color='#3B82F6', linewidth=2, markersize=8)
+    plt.plot(x_analytical, T_analytical, '--', label=i18n_t("py.legend.analytical"), color='#EF4444', linewidth=2)
     
     # Adição dos parâmetros na legenda
-    param_label = f"Parâmetros:\nNº Nós (nx): {nx} | Alpha: {alpha} | Q: {Q}"
+    param_label = i18n_t("py.legend.params").format(nx=nx, alpha=alpha, Q=Q)
     plt.plot([], [], ' ', label=param_label)
     
     # Configuração do gráfico
-    plt.title("Comparação: Solução Numérica vs Analítica", fontsize=14, pad=15)
-    plt.xlabel("Posição (x)", fontsize=12)
-    plt.ylabel("Temperatura (T)", fontsize=12)
+    plt.title(i18n_t("py.plot.title"), fontsize=14, pad=15)
+    plt.xlabel(i18n_t("py.plot.xlabel"), fontsize=12)
+    plt.ylabel(i18n_t("py.plot.ylabel"), fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.7)
     plt.legend(fontsize=10, framealpha=0.9)
     plt.tight_layout()
-    plt.show()
+    plot_show(i18n_t("title"))
+    progress("done")
 
-# ==============================
-# 7. Configuração do Evento
-# ==============================
-# Configuração do evento de clique no botão
-run_btn = document.getElementById("runBtn")
-run_btn.addEventListener("click", create_proxy(runSimulation))
 
+@when("click", "#run-btn")
+async def runSimulation_guarded(event=None):
+    """Mostra a exceção na área do resultado e reabilita o botão Executar."""
+    try:
+        await runSimulation(event)
+    except Exception as e:
+        progress("fail")
+        document.getElementById("plot-output").innerHTML = i18n_t("py.error").format(e=e)
+        print(e)
+    finally:
+        progress("done")

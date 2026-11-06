@@ -1,0 +1,18 @@
+{
+  "title": "Condução Permanente 1D com Geração Interna (MDF)",
+  "desc.equation": "Condução de calor em regime permanente numa barra com geração interna uniforme de calor:",
+  "desc.domain": "Barra de comprimento L = 1 (fixo no código), discretizada em nₓ nós igualmente espaçados:",
+  "desc.bc.left": "Extremidade esquerda, temperatura prescrita (fixa no código):",
+  "desc.bc.right": "Extremidade direita, temperatura prescrita (fixa no código):",
+  "desc.method": "Método das Diferenças Finitas: a segunda derivada é aproximada por diferenças centradas de segunda ordem nos nₓ − 2 nós internos, e o sistema linear tridiagonal resultante é resolvido diretamente.",
+  "desc.reference": "Solução analítica obtida por integração direta da equação com as condições de contorno acima:",
+  "input.nx": "Número de nós nₓ",
+  "input.alpha": "Coeficiente α",
+  "input.Q": "Geração de calor Q",
+  "py.legend.numeric": "Solução Numérica",
+  "py.legend.analytical": "Solução Analítica",
+  "py.legend.params": "Parâmetros:\nNº Nós (nx): {nx} | Alpha: {alpha} | Q: {Q}",
+  "py.plot.title": "Comparação: Solução Numérica vs Analítica",
+  "py.plot.xlabel": "Posição (x)",
+  "py.plot.ylabel": "Temperatura (T)"
+}
